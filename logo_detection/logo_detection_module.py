@@ -25,8 +25,35 @@ def yolov8_logo_detection(model_path, image_path, save_result=False):
     model = YOLO(model_path)
 
     # Get bounding boxes
-    results = model(image_path)
-    results = (results[0].boxes).xyxy
+    all_results = model(image_path)
+
+    results_general = all_results[0]
+
+    # Each result has .boxes, which is a Boxes object
+    boxes = results_general.boxes 
+
+    # boxes.xyxy gives bounding boxes in [x1, y1, x2, y2]
+    bounding_boxes = boxes.xyxy.cpu().numpy()  
+
+    # boxes.cls gives you the class indices
+    class_indices = boxes.cls.cpu().numpy().astype(int) 
+
+    # boxes.conf gives confidences
+    confidences = boxes.conf.cpu().numpy() 
+
+    # Map indices to actual names
+    names = model.names  # dict: {0: 'person', 1: 'bicycle', ...}
+
+    # Build a list of detections
+    detections = []
+    for idx, cls_idx in enumerate(class_indices):
+        detections.append({
+            "label": names[cls_idx],
+            "confidence": round(float(confidences[idx]),2),
+            "bbox": [round(float(x),2) for x in bounding_boxes[idx]],
+        })
+
+    results = (all_results[0].boxes).xyxy
     bboxes = []
     for box in results:
         bboxes.append(box.cpu().tolist())
@@ -44,5 +71,5 @@ def yolov8_logo_detection(model_path, image_path, save_result=False):
         os.makedirs("./results", exist_ok=True)
         cv2.imwrite(f'results/{filename}_detected_logo.png', image)
 
-    return bboxes
+    return bboxes,detections
 
